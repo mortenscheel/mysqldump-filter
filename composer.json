@@ -9,5 +9,5 @@
         }
     ],
     "require": {},
-    "bin": ["src/mysqldump-filter"]
+    "bin": ["bin/mysqldump-filter"]
 }
