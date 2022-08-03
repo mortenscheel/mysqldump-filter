@@ -11,3 +11,6 @@ Example:
 ```shell
 cat dump.sql | mysqldump-filter --skip=some_table,another_table | mysql -u username -p db_name
 ```
+
+## Contributions
+All contributions are welcome
