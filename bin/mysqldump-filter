@@ -1,0 +1,111 @@
+#!/usr/bin/env php
+<?php
+
+$current_table = '';
+$current_table_created = false;
+$dump_started = microtime(true);
+$table_started = microtime(true);
+$table_line = 0;
+$skip_tables = [];
+$skip_current = false;
+$total_lines = 0;
+$stats = [];
+
+$in = STDIN;
+stream_set_blocking($in, 0);
+
+$opts = getopt('', ['skip::', 'help']);
+if (\array_key_exists('help', $opts)) {
+    printUsage();
+    exit(0);
+}
+if ($skip_arg = $opts['skip'] ?? false) {
+    if (\is_string($skip_arg)) {
+        $skip_tables = array_filter(
+            array_map(fn ($item) => trim($item), explode(',', $skip_arg)),
+            fn ($item) => $item
+        );
+    }
+}
+
+while (true) {
+    // fgets() may return false before EOF
+    while (false !== ($line = fgets($in))) {
+        $current_time = microtime(true);
+        $elapsed = $current_time - $table_started;
+        if (preg_match('/^CREATE TABLE `(\w+)`.*/', $line, $match)) {
+            if ($current_table) {
+                // End previous table
+                printProgress($elapsed, $table_line, $current_table, $skip_current, true);
+                $stats[$current_table] = $elapsed;
+            }
+            $current_table = $match[1];
+            $current_table_created = false; // CREATE TABLE lasts until next empty line
+            $skip_current = false;
+            if (\in_array($current_table, $skip_tables, true)) {
+                $skip_current = true;
+            }
+            $table_started = $current_time;
+            $table_line = 0;
+        } elseif ($current_table) {
+            $table_line++;
+            printProgress($elapsed, $table_line, $current_table, $skip_current);
+        }
+        if (isMetaLine($line)) {
+            if (!$current_table_created) {
+                $current_table_created = true;
+                if ($skip_current) {
+                    fwrite(STDOUT, "\n-- $current_table inserts skipped\n\n");
+                }
+            } else {
+                $current_table_created = false; // Start printing again after the INSERT block
+            }
+        }
+        if ($skip_current && $current_table_created) {
+            continue;
+        }
+        fwrite(STDOUT, $line);
+        $total_lines++;
+    }
+    if (feof($in)) {
+        break;
+    }
+    if ($total_lines === 0) {
+        break;
+    }
+}
+if (!$current_table) {
+    // Nothing was processed
+    printUsage();
+} else {
+    // End previous progress line
+    printProgress($elapsed, $table_line, $current_table, $skip_current, true);
+    // Print stats
+    $total_time = microtime(true) - $dump_started;
+    arsort($stats);
+    fwrite(STDERR, sprintf("Stats:\nTotal time: %.1f seconds\n", $total_time));
+    foreach ($stats as $table => $time) {
+        $percent = $time / $total_time * 100;
+        if ($percent >= 5) {
+            fwrite(STDERR, sprintf("%d%%: %s (%.1f s)\n", $percent, $table, $time));
+        }
+    }
+}
+
+function printProgress($time, $lines, $table, $skipped, $done = false)
+{
+    if ($skipped) {
+        $table = "$table (skipped)";
+    }
+    fwrite(STDERR, sprintf("\r% 5.1f s | lines: %8s | %s", $time, $lines, $done ? "$table\n" : $table));
+}
+
+function printUsage()
+{
+    fwrite(STDOUT, "Usage: cat /path/to/file | dump-filter [--skip=table1,table2]\n");
+}
+
+function isMetaLine($line)
+{
+    return trim($line) === '' || str_starts_with($line, '/*');
+}

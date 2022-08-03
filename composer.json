@@ -1,0 +1,13 @@
+{
+    "name": "mortenscheel/mysqldump-filter",
+    "description": "CLI tool to filter table data from mysqldump",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Morten Scheel",
+            "email": "morten@mortenscheel.com"
+        }
+    ],
+    "require": {},
+    "bin": ["src/mysqldump-filter"]
+}
