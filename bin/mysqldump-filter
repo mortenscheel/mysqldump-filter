@@ -30,7 +30,7 @@ if ($skip_arg = $opts['skip'] ?? false) {
 
 while (true) {
     // fgets() may return false before EOF
-    while (false !== ($line = fgets($in))) {
+    while (false !== ($line = fgets($in, 4096))) {
         $current_time = microtime(true);
         $elapsed = $current_time - $table_started;
         if (preg_match('/^CREATE TABLE `(\w+)`.*/', $line, $match)) {
