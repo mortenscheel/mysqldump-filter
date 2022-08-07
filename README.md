@@ -10,6 +10,8 @@ composer global require mortenscheel/mysqldump-filter
 Example:
 ```shell
 cat dump.sql | mysqldump-filter --skip=some_table,another_table | mysql -u username -p db_name
+
+cat dump.sql | mysqldump-filter --only=some_table,another_table | mysql -u username -p db_name
 ```
 
 ## Contributions

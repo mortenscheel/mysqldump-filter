@@ -7,6 +7,7 @@ $dump_started = microtime(true);
 $table_started = microtime(true);
 $table_line = 0;
 $skip_tables = [];
+$only_tables = [];
 $skip_current = false;
 $total_lines = 0;
 $stats = [];
@@ -14,7 +15,7 @@ $stats = [];
 $in = STDIN;
 stream_set_blocking($in, 0);
 
-$opts = getopt('', ['skip::', 'help']);
+$opts = getopt('', ['skip::', 'only::', 'help']);
 if (\array_key_exists('help', $opts)) {
     printUsage();
     exit(0);
@@ -23,6 +24,14 @@ if ($skip_arg = $opts['skip'] ?? false) {
     if (\is_string($skip_arg)) {
         $skip_tables = array_filter(
             array_map(fn ($item) => trim($item), explode(',', $skip_arg)),
+            fn ($item) => $item
+        );
+    }
+}
+if ($only_arg = $opts['only'] ?? false) {
+    if (\is_string($only_arg)) {
+        $only_tables = array_filter(
+            array_map(fn ($item) => trim($item), explode(',', $only_arg)),
             fn ($item) => $item
         );
     }
@@ -43,6 +52,9 @@ while (true) {
             $current_table_created = false; // CREATE TABLE lasts until next empty line
             $skip_current = false;
             if (\in_array($current_table, $skip_tables, true)) {
+                $skip_current = true;
+            }
+            if (!empty($only_tables) && !\in_array($current_table, $only_tables)) {
                 $skip_current = true;
             }
             $table_started = $current_time;
@@ -92,6 +104,10 @@ if (!$current_table) {
     }
 }
 
+function shouldSkip($table)
+{
+}
+
 function printProgress($time, $lines, $table, $skipped, $done = false)
 {
     if ($skipped) {
@@ -102,7 +118,7 @@ function printProgress($time, $lines, $table, $skipped, $done = false)
 
 function printUsage()
 {
-    fwrite(STDOUT, "Usage: cat /path/to/file | dump-filter [--skip=table1,table2]\n");
+    fwrite(STDOUT, "Usage: cat /path/to/file | dump-filter [--skip=table1,table2] [--only=table1,table2]\n");
 }
 
 function isMetaLine($line)
