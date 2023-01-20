@@ -9,6 +9,7 @@ $table_line = 0;
 $skip_tables = [];
 $only_tables = [];
 $skip_current = false;
+$in_insert = false;
 $total_lines = 0;
 $stats = [];
 
@@ -63,17 +64,13 @@ while (true) {
             $table_line++;
             printProgress($elapsed, $table_line, $current_table, $skip_current);
         }
-        if (isMetaLine($line)) {
-            if (!$current_table_created) {
-                $current_table_created = true;
-                if ($skip_current) {
-                    fwrite(STDOUT, "\n-- $current_table inserts skipped\n\n");
-                }
-            } else {
-                $current_table_created = false; // Start printing again after the INSERT block
-            }
+        if (str_starts_with($line, 'INSERT INTO')) {
+            $in_insert = true;
         }
-        if ($skip_current && $current_table_created) {
+        if ($in_insert && preg_match('/ALTER TABLE.*ENABLE KEYS/', $line)){
+            $in_insert = false;
+        }
+        if ($skip_current && $in_insert) {
             continue;
         }
         fwrite(STDOUT, $line);
